@@ -45,7 +45,7 @@ export type DraftEditorCommand =
  * Toggle styles. Commands may be intepreted to modify inline text ranges
  * or block types.
  */
-| 'bold' | 'italic' | 'underline' | 'code'
+| 'bold' | 'italic' | 'underline' | 'strikethrough' | 'code'
 /**
  * Split a block in two.
  */

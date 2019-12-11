@@ -111,6 +111,10 @@ function getDefaultKeyBinding(e: SyntheticKeyboardEvent<>): ?DraftEditorCommand 
       // W
       return isOSX && isCtrlKeyCommand(e) ? 'backspace-word' : null;
 
+    case 88:
+      // X
+      return hasCommandModifier(e) && e.shiftKey ? 'strikethrough' : null;
+
     case 89:
       // Y
       if (isCtrlKeyCommand(e)) {

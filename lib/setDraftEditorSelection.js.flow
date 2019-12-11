@@ -11,6 +11,7 @@
 'use strict';
 
 declare var __DEV__: boolean;
+import type { SelectionObject } from "./DraftDOMTypes";
 import type SelectionState from "./SelectionState";
 
 const DraftEffects = require("./DraftEffects");
@@ -113,7 +114,7 @@ function setDraftEditorSelection(selectionState: SelectionState, node: Node, blo
     return;
   }
 
-  const selection = documentObject.defaultView.getSelection();
+  const selection: SelectionObject = documentObject.defaultView.getSelection();
   let anchorKey = selectionState.getAnchorKey();
   let anchorOffset = selectionState.getAnchorOffset();
   let focusKey = selectionState.getFocusKey();
@@ -181,10 +182,12 @@ function setDraftEditorSelection(selectionState: SelectionState, node: Node, blo
  */
 
 
-function addFocusToSelection(selection: Object, node: Node, offset: number, selectionState: SelectionState): void {
+function addFocusToSelection(selection: SelectionObject, node: ?Node, offset: number, selectionState: SelectionState): void {
   const activeElement = getActiveElement();
+  const extend = selection.extend; // containsNode returns false if node is null.
+  // Let's refine the type of this value out here so flow knows.
 
-  if (selection.extend && containsNode(activeElement, node)) {
+  if (extend && node != null && containsNode(activeElement, node)) {
     // If `extend` is called while another element has focus, an error is
     // thrown. We therefore disable `extend` if the active element is somewhere
     // other than the node we are selecting. This should only occur in Firefox,
@@ -208,7 +211,8 @@ function addFocusToSelection(selection: Object, node: Node, offset: number, sele
     try {
       // Fixes some reports of "InvalidStateError: Failed to execute 'extend' on
       // 'Selection': This Selection object doesn't have any Ranges."
-      if (selection.rangeCount > 0) {
+      // Note: selection.extend does not exist in IE.
+      if (selection.rangeCount > 0 && selection.extend) {
         selection.extend(node, offset);
       }
     } catch (e) {
@@ -254,7 +258,7 @@ function addFocusToSelection(selection: Object, node: Node, offset: number, sele
     // Additionally, clone the selection range. IE11 throws an
     // InvalidStateError when attempting to access selection properties
     // after the range is detached.
-    if (selection.rangeCount > 0) {
+    if (node && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       range.setEnd(node, offset);
       selection.addRange(range.cloneRange());
@@ -262,7 +266,7 @@ function addFocusToSelection(selection: Object, node: Node, offset: number, sele
   }
 }
 
-function addPointToSelection(selection: Object, node: Node, offset: number, selectionState: SelectionState): void {
+function addPointToSelection(selection: SelectionObject, node: Node, offset: number, selectionState: SelectionState): void {
   const range = getCorrectDocumentFromNode(node).createRange(); // logging to catch bug that is being reported in t16250795
 
   if (offset > getNodeLength(node)) {

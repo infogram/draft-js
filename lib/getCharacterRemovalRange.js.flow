@@ -73,9 +73,7 @@ function getCharacterRemovalRange(entityMap: EntityMap, startBlock: BlockNodeRec
 function getEntityRemovalRange(entityMap: EntityMap, block: BlockNodeRecord, selectionState: SelectionState, direction: DraftRemovalDirection, entityKey: string, isEntireSelectionWithinEntity: boolean, isEntityAtStart: boolean): SelectionState {
   let start = selectionState.getStartOffset();
   let end = selectionState.getEndOffset();
-
-  const entity = entityMap.__get(entityKey);
-
+  const entity = entityMap.get(entityKey);
   const mutability = entity.getMutability();
   const sideToConsider = isEntityAtStart ? start : end; // `MUTABLE` entities can just have the specified range of text removed
   // directly. No adjustments are needed.

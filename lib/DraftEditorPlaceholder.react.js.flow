@@ -17,8 +17,11 @@ const React = require("react");
 
 const cx = require("fbjs/lib/cx");
 
+const shallowEqual = require("fbjs/lib/shallowEqual");
+
 type Props = {
   accessibilityID: string,
+  className?: string,
   editorState: EditorState,
   text: string,
   textAlignment: DraftTextAlignment,
@@ -33,20 +36,29 @@ type Props = {
 
 class DraftEditorPlaceholder extends React.Component<Props> {
   shouldComponentUpdate(nextProps: Props): boolean {
-    return this.props.text !== nextProps.text || this.props.editorState.getSelection().getHasFocus() !== nextProps.editorState.getSelection().getHasFocus();
+    const {
+      editorState,
+      ...otherProps
+    } = this.props;
+    const {
+      editorState: nextEditorState,
+      ...nextOtherProps
+    } = nextProps;
+    return editorState.getSelection().getHasFocus() !== nextEditorState.getSelection().getHasFocus() || !shallowEqual(otherProps, nextOtherProps);
   }
 
   render(): React.Node {
-    const hasFocus = this.props.editorState.getSelection().getHasFocus();
-    const className = cx({
+    const innerClassName = // We can't use joinClasses since the fbjs flow definition is wrong. Using
+    // cx to concatenate is rising issues with haste internally.
+    // eslint-disable-next-line fb-www/cx-concat
+    cx('public/DraftEditorPlaceholder/inner') + (this.props.className != null ? ` ${this.props.className}` : '');
+    return <div className={cx({
       'public/DraftEditorPlaceholder/root': true,
-      'public/DraftEditorPlaceholder/hasFocus': hasFocus
-    });
-    const contentStyle = {
-      whiteSpace: 'pre-wrap'
-    };
-    return <div className={className}>
-        <div className={cx('public/DraftEditorPlaceholder/inner')} id={this.props.accessibilityID} style={contentStyle}>
+      'public/DraftEditorPlaceholder/hasFocus': this.props.editorState.getSelection().getHasFocus()
+    })}>
+        <div className={innerClassName} id={this.props.accessibilityID} style={{
+        whiteSpace: 'pre-wrap'
+      }}>
           {this.props.text}
         </div>
       </div>;

@@ -49,7 +49,7 @@ const isHTMLElement = require("./isHTMLElement");
 const SCROLL_BUFFER = 10;
 const {
   List
-} = Immutable; // we should harden up the bellow flow types to make them more strict
+} = Immutable; // we should harden up the below flow types to make them more strict
 
 type CustomRenderConfig = Object;
 type DraftRenderConfig = Object;
@@ -94,7 +94,7 @@ const shouldNotAddWrapperElement = (block: BlockNodeRecord, contentState: Conten
 };
 
 const applyWrapperElementToSiblings = (wrapperTemplate: *, Element: string, nodes: Array<React.Node>): Array<React.Node> => {
-  const wrappedSiblings = []; // we check back until we find a sibbling that does not have same wrapper
+  const wrappedSiblings = []; // we check back until we find a sibling that does not have same wrapper
 
   for (const sibling: any of nodes.reverse()) {
     if (sibling.type !== Element) {

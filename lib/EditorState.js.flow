@@ -11,11 +11,12 @@
 'use strict';
 
 import type { BlockMap } from "./BlockMap";
+import type { DecoratorRangeRawType } from "./BlockTree";
+import type { ContentStateRawType } from "./ContentStateRawType";
 import type { DraftDecoratorType } from "./DraftDecoratorType";
 import type { DraftInlineStyle } from "./DraftInlineStyle";
 import type { EditorChangeType } from "./EditorChangeType";
 import type { EntityMap } from "./EntityMap";
-import type { List, OrderedMap } from "immutable";
 
 const BlockTree = require("./BlockTree");
 
@@ -30,12 +31,14 @@ const Immutable = require("immutable");
 const {
   OrderedSet,
   Record,
-  Stack
+  Stack,
+  OrderedMap,
+  List
 } = Immutable; // When configuring an editor, the user can chose to provide or not provide
 // basically all keys. `currentContent` varies, so this type doesn't include it.
 // (See the types defined below.)
 
-type BaseEditorStateConfig = {|
+type BaseEditorStateConfig = {
   allowUndo?: boolean,
   decorator?: ?DraftDecoratorType,
   directionMap?: ?OrderedMap<string, string>,
@@ -48,15 +51,32 @@ type BaseEditorStateConfig = {|
   selection?: ?SelectionState,
   treeMap?: ?OrderedMap<string, List<any>>,
   undoStack?: Stack<ContentState>,
-|}; // When crating an editor, we want currentContent to be set.
+};
+type BaseEditorStateRawConfig = {
+  allowUndo?: boolean,
+  decorator?: ?DraftDecoratorType,
+  directionMap?: ?{...},
+  forceSelection?: boolean,
+  inCompositionMode?: boolean,
+  inlineStyleOverride?: ?Array<String>,
+  lastChangeType?: ?EditorChangeType,
+  nativelyRenderedContent?: ?ContentStateRawType,
+  redoStack?: Array<ContentStateRawType>,
+  selection?: ?{...},
+  treeMap?: ?Map<string, Array<DecoratorRangeRawType>>,
+  undoStack?: Array<ContentStateRawType>,
+}; // When crating an editor, we want currentContent to be set.
 
-type EditorStateCreationConfigType = {| ...BaseEditorStateConfig,
+type EditorStateCreationConfigType = { ...BaseEditorStateConfig,
   currentContent: ContentState,
-|}; // When using EditorState.set(...), currentContent is optional
+};
+type EditorStateCreationConfigRawType = { ...BaseEditorStateRawConfig,
+  currentContent: ContentStateRawType,
+}; // When using EditorState.set(...), currentContent is optional
 
-type EditorStateChangeConfigType = {| ...BaseEditorStateConfig,
+type EditorStateChangeConfigType = { ...BaseEditorStateConfig,
   currentContent?: ?ContentState,
-|};
+};
 type EditorStateRecordType = {
   allowUndo: boolean,
   currentContent: ?ContentState,
@@ -91,10 +111,15 @@ const defaultRecord: EditorStateRecordType = {
 const EditorStateRecord = (Record(defaultRecord): any);
 
 class EditorState {
+  // $FlowFixMe[value-as-type]
   _immutable: EditorStateRecord;
 
   static createEmpty(decorator?: ?DraftDecoratorType): EditorState {
-    return EditorState.createWithContent(ContentState.createFromText(''), decorator);
+    return this.createWithText('', decorator);
+  }
+
+  static createWithText(text: string, decorator?: ?DraftDecoratorType): EditorState {
+    return EditorState.createWithContent(ContentState.createFromText(text), decorator);
   }
 
   static createWithContent(contentState: ContentState, decorator?: ?DraftDecoratorType): EditorState {
@@ -122,6 +147,19 @@ class EditorState {
       directionMap: EditorBidiService.getDirectionMap(currentContent)
     };
     return new EditorState(new EditorStateRecord(recordConfig));
+  }
+
+  static fromJS(config: EditorStateCreationConfigRawType): EditorState {
+    return new EditorState(new EditorStateRecord({ ...config,
+      directionMap: config.directionMap != null ? OrderedMap(config.directionMap) : config.directionMap,
+      inlineStyleOverride: config.inlineStyleOverride != null ? OrderedSet(config.inlineStyleOverride) : config.inlineStyleOverride,
+      nativelyRenderedContent: config.nativelyRenderedContent != null ? ContentState.fromJS(config.nativelyRenderedContent) : config.nativelyRenderedContent,
+      redoStack: config.redoStack != null ? Stack(config.redoStack.map(v => ContentState.fromJS(v))) : config.redoStack,
+      selection: config.selection != null ? new SelectionState(config.selection) : config.selection,
+      treeMap: config.treeMap != null ? OrderedMap(config.treeMap).map(v => List(v).map(v => BlockTree.fromJS(v))) : config.treeMap,
+      undoStack: config.undoStack != null ? Stack(config.undoStack.map(v => ContentState.fromJS(v))) : config.undoStack,
+      currentContent: ContentState.fromJS(config.currentContent)
+    }));
   }
 
   static set(editorState: EditorState, put: EditorStateChangeConfigType): EditorState {
@@ -367,10 +405,10 @@ class EditorState {
 
     if (selection !== currentContent.getSelectionAfter() || mustBecomeBoundary(editorState, changeType)) {
       undoStack = undoStack.push(currentContent);
-      newContent = newContent.set('selectionBefore', selection);
+      newContent = newContent.setSelectionBefore(selection);
     } else if (changeType === 'insert-characters' || changeType === 'backspace-character' || changeType === 'delete-character') {
       // Preserve the previous selection.
-      newContent = newContent.set('selectionBefore', currentContent.getSelectionBefore());
+      newContent = newContent.setSelectionBefore(currentContent.getSelectionBefore());
     }
 
     let inlineStyleOverride = editorState.getInlineStyleOverride(); // Don't discard inline style overrides for the following change types:
@@ -460,6 +498,7 @@ class EditorState {
   /**
    * Not for public consumption.
    */
+  // $FlowFixMe[value-as-type]
 
 
   constructor(immutable: EditorStateRecord) {
@@ -468,6 +507,7 @@ class EditorState {
   /**
    * Not for public consumption.
    */
+  // $FlowFixMe[value-as-type]
 
 
   getImmutable(): EditorStateRecord {
@@ -506,7 +546,7 @@ function generateNewTreeMap(contentState: ContentState, decorator?: ?DraftDecora
 
 
 function regenerateTreeForNewBlocks(editorState: EditorState, newBlockMap: BlockMap, newEntityMap: EntityMap, decorator?: ?DraftDecoratorType): OrderedMap<string, List<any>> {
-  const contentState = editorState.getCurrentContent().set('entityMap', newEntityMap);
+  const contentState = editorState.getCurrentContent().replaceEntityMap(newEntityMap);
   const prevBlockMap = contentState.getBlockMap();
   const prevTreeMap = editorState.getImmutable().get('treeMap');
   return prevTreeMap.merge(newBlockMap.toSeq().filter((block, key) => block !== prevBlockMap.get(key)).map(block => BlockTree.generate(contentState, block, decorator)));

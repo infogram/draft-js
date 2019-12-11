@@ -50,9 +50,16 @@ const updateExistingBlock = (contentState: ContentState, selectionState: Selecti
       break;
   }
 
+  let type = targetBlock.getType();
+
+  if (text && type === 'unstyled') {
+    type = fragmentBlock.getType();
+  }
+
   const newBlock = targetBlock.merge({
     text: text.slice(0, targetOffset) + fragmentBlock.getText() + text.slice(targetOffset),
     characterList: insertIntoList(chars, fragmentBlock.getCharacterList(), targetOffset),
+    type,
     data
   });
   return contentState.merge({

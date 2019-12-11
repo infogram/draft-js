@@ -39,7 +39,7 @@ function keyCommandPlainBackspace(editorState: EditorState): EditorState {
   }
 
   const selection = editorState.getSelection();
-  return EditorState.push(editorState, afterRemoval.set('selectionBefore', selection), selection.isCollapsed() ? 'backspace-character' : 'remove-range');
+  return EditorState.push(editorState, afterRemoval.setSelectionBefore(selection), selection.isCollapsed() ? 'backspace-character' : 'remove-range');
 }
 
 module.exports = keyCommandPlainBackspace;

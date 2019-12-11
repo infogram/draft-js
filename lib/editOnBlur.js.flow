@@ -10,6 +10,7 @@
  */
 'use strict';
 
+import type { SelectionObject } from "./DraftDOMTypes";
 import type DraftEditor from "./DraftEditor.react";
 
 const EditorState = require("./EditorState");
@@ -31,10 +32,8 @@ function editOnBlur(editor: DraftEditor, e: SyntheticEvent<HTMLElement>): void {
     ownerDocument
   } = e.currentTarget;
 
-  if ( // This ESLint rule conflicts with `sketchy-null-bool` flow check
-  // eslint-disable-next-line no-extra-boolean-cast
-  !Boolean(editor.props.preserveSelectionOnBlur) && getActiveElement(ownerDocument) === ownerDocument.body) {
-    const selection = ownerDocument.defaultView.getSelection();
+  if (!Boolean(editor.props.preserveSelectionOnBlur) && getActiveElement(ownerDocument) === ownerDocument.body) {
+    const selection: SelectionObject = ownerDocument.defaultView.getSelection();
     const editorNode = editor.editor;
 
     if (selection.rangeCount === 1 && containsNode(editorNode, selection.anchorNode) && containsNode(editorNode, selection.focusNode)) {

@@ -23,8 +23,6 @@ const ContentBlockNode = require("./ContentBlockNode");
 
 const ContentState = require("./ContentState");
 
-const DraftEntity = require("./DraftEntity");
-
 const DraftTreeAdapter = require("./DraftTreeAdapter");
 
 const DraftTreeInvariants = require("./DraftTreeInvariants");
@@ -51,8 +49,11 @@ const {
   Map,
   OrderedMap
 } = Immutable;
+type EntityKeyMap = {
+  [key: number]: number
+};
 
-const decodeBlockNodeConfig = (block: RawDraftContentBlock, entityMap: *): BlockNodeConfig => {
+const decodeBlockNodeConfig = (block: RawDraftContentBlock, entityKeyMap: EntityKeyMap): BlockNodeConfig => {
   const {
     key,
     type,
@@ -66,12 +67,12 @@ const decodeBlockNodeConfig = (block: RawDraftContentBlock, entityMap: *): Block
     type: type || 'unstyled',
     key: key || generateRandomKey(),
     data: Map(data),
-    characterList: decodeCharacterList(block, entityMap)
+    characterList: decodeCharacterList(block, entityKeyMap)
   };
   return blockNodeConfig;
 };
 
-const decodeCharacterList = (block: RawDraftContentBlock, entityMap: *): List<CharacterMetadata> => {
+const decodeCharacterList = (block: RawDraftContentBlock, entityKeyMap: EntityKeyMap): List<CharacterMetadata> => {
   const {
     text,
     entityRanges: rawEntityRanges,
@@ -80,8 +81,8 @@ const decodeCharacterList = (block: RawDraftContentBlock, entityMap: *): List<Ch
   const entityRanges = rawEntityRanges || [];
   const inlineStyleRanges = rawInlineStyleRanges || []; // Translate entity range keys to the DraftEntity map.
 
-  return createCharacterList(decodeInlineStyleRanges(text, inlineStyleRanges), decodeEntityRanges(text, entityRanges.filter(range => entityMap.hasOwnProperty(range.key)).map(range => ({ ...range,
-    key: entityMap[range.key]
+  return createCharacterList(decodeInlineStyleRanges(text, inlineStyleRanges), decodeEntityRanges(text, entityRanges.filter(range => entityKeyMap.hasOwnProperty(range.key)).map(range => ({ ...range,
+    key: entityKeyMap[range.key]
   }))));
 };
 
@@ -163,22 +164,22 @@ const decodeContentBlockNodes = (blocks: Array<RawDraftContentBlock>, entityMap:
   }, OrderedMap());
 };
 
-const decodeContentBlocks = (blocks: Array<RawDraftContentBlock>, entityMap: *): BlockMap => {
+const decodeContentBlocks = (blocks: Array<RawDraftContentBlock>, entityKeyMap: EntityKeyMap): BlockMap => {
   return OrderedMap(blocks.map((block: RawDraftContentBlock) => {
-    const contentBlock = new ContentBlock(decodeBlockNodeConfig(block, entityMap));
+    const contentBlock = new ContentBlock(decodeBlockNodeConfig(block, entityKeyMap));
     return [contentBlock.getKey(), contentBlock];
   }));
 };
 
-const decodeRawBlocks = (rawState: RawDraftContentState, entityMap: *): BlockMap => {
+const decodeRawBlocks = (rawState: RawDraftContentState, entityKeyMap: EntityKeyMap): BlockMap => {
   const isTreeRawBlock = rawState.blocks.find(block => Array.isArray(block.children) && block.children.length > 0);
   const rawBlocks = experimentalTreeDataSupport && !isTreeRawBlock ? DraftTreeAdapter.fromRawStateToRawTreeState(rawState).blocks : rawState.blocks;
 
   if (!experimentalTreeDataSupport) {
-    return decodeContentBlocks(isTreeRawBlock ? DraftTreeAdapter.fromRawTreeStateToRawState(rawState).blocks : rawBlocks, entityMap);
+    return decodeContentBlocks(isTreeRawBlock ? DraftTreeAdapter.fromRawTreeStateToRawState(rawState).blocks : rawBlocks, entityKeyMap);
   }
 
-  const blockMap = decodeContentBlockNodes(rawBlocks, entityMap); // in dev mode, check that the tree invariants are met
+  const blockMap = decodeContentBlockNodes(rawBlocks, entityKeyMap); // in dev mode, check that the tree invariants are met
 
   if (__DEV__) {
     invariant(DraftTreeInvariants.isValidTree(blockMap), 'Should be a valid tree');
@@ -187,35 +188,45 @@ const decodeRawBlocks = (rawState: RawDraftContentState, entityMap: *): BlockMap
   return blockMap;
 };
 
-const decodeRawEntityMap = (rawState: RawDraftContentState): * => {
+const decodeRawEntityMap = (contentStateArg: ContentState, rawState: RawDraftContentState): {
+  entityKeyMap: EntityKeyMap,
+  contentState: ContentState,
+} => {
   const {
     entityMap: rawEntityMap
   } = rawState;
-  const entityMap = {}; // TODO: Update this once we completely remove DraftEntity
-
+  const entityKeyMap = {};
+  let contentState = contentStateArg;
   Object.keys(rawEntityMap).forEach(rawEntityKey => {
     const {
       type,
       mutability,
       data
-    } = rawEntityMap[rawEntityKey]; // get the key reference to created entity
+    } = rawEntityMap[rawEntityKey];
+    contentState = contentState.createEntity(type, mutability, data || {}); // get the key reference to created entity
 
-    entityMap[rawEntityKey] = DraftEntity.__create(type, mutability, data || {});
+    entityKeyMap[rawEntityKey] = contentState.getLastCreatedEntityKey();
   });
-  return entityMap;
+  return {
+    entityKeyMap,
+    contentState
+  };
 };
 
 const convertFromRawToDraftState = (rawState: RawDraftContentState): ContentState => {
   invariant(Array.isArray(rawState.blocks), 'invalid RawDraftContentState'); // decode entities
 
-  const entityMap = decodeRawEntityMap(rawState); // decode blockMap
+  const {
+    contentState,
+    entityKeyMap
+  } = decodeRawEntityMap(ContentState.createFromText(''), rawState); // decode blockMap
 
-  const blockMap = decodeRawBlocks(rawState, entityMap); // create initial selection
+  const blockMap = decodeRawBlocks(rawState, entityKeyMap); // create initial selection
 
   const selectionState = blockMap.isEmpty() ? new SelectionState() : SelectionState.createEmpty(blockMap.first().getKey());
   return new ContentState({
     blockMap,
-    entityMap,
+    entityMap: contentState.getEntityMap(),
     selectionBefore: selectionState,
     selectionAfter: selectionState
   });

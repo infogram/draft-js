@@ -12,7 +12,6 @@
 
 import type { BlockNodeRecord } from "./BlockNodeRecord";
 import type ContentState from "./ContentState";
-import type { EntityMap } from "./EntityMap";
 import type SelectionState from "./SelectionState";
 import type { List } from "immutable";
 
@@ -24,12 +23,11 @@ const invariant = require("fbjs/lib/invariant");
 
 function removeEntitiesAtEdges(contentState: ContentState, selectionState: SelectionState): ContentState {
   const blockMap = contentState.getBlockMap();
-  const entityMap = contentState.getEntityMap();
   const updatedBlocks = {};
   const startKey = selectionState.getStartKey();
   const startOffset = selectionState.getStartOffset();
   const startBlock = blockMap.get(startKey);
-  const updatedStart = removeForBlock(entityMap, startBlock, startOffset);
+  const updatedStart = removeForBlock(contentState, startBlock, startOffset);
 
   if (updatedStart !== startBlock) {
     updatedBlocks[startKey] = updatedStart;
@@ -43,14 +41,14 @@ function removeEntitiesAtEdges(contentState: ContentState, selectionState: Selec
     endBlock = updatedStart;
   }
 
-  const updatedEnd = removeForBlock(entityMap, endBlock, endOffset);
+  const updatedEnd = removeForBlock(contentState, endBlock, endOffset);
 
   if (updatedEnd !== endBlock) {
     updatedBlocks[endKey] = updatedEnd;
   }
 
   if (!Object.keys(updatedBlocks).length) {
-    return contentState.set('selectionAfter', selectionState);
+    return contentState.setSelectionAfter(selectionState);
   }
 
   return contentState.merge({
@@ -95,7 +93,7 @@ function getRemovalRange(characters: List<CharacterMetadata>, entityKey: ?string
   return removalRange;
 }
 
-function removeForBlock(entityMap: EntityMap, block: BlockNodeRecord, offset: number): BlockNodeRecord {
+function removeForBlock(contentState: ContentState, block: BlockNodeRecord, offset: number): BlockNodeRecord {
   let chars = block.getCharacterList();
   const charBefore = offset > 0 ? chars.get(offset - 1) : undefined;
   const charAfter = offset < chars.count() ? chars.get(offset) : undefined;
@@ -103,7 +101,7 @@ function removeForBlock(entityMap: EntityMap, block: BlockNodeRecord, offset: nu
   const entityAfterCursor = charAfter ? charAfter.getEntity() : undefined;
 
   if (entityAfterCursor && entityAfterCursor === entityBeforeCursor) {
-    const entity = entityMap.__get(entityAfterCursor);
+    const entity = contentState.getEntity(entityAfterCursor);
 
     if (entity.getMutability() !== 'MUTABLE') {
       let {

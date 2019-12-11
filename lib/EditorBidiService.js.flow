@@ -23,7 +23,7 @@ const {
 } = Immutable;
 let bidiService;
 const EditorBidiService = {
-  getDirectionMap: function (content: ContentState, prevBidiMap: ?OrderedMap<any, any>): OrderedMap<any, any> {
+  getDirectionMap(content: ContentState, prevBidiMap: ?OrderedMap<any, any>): OrderedMap<any, any> {
     if (!bidiService) {
       bidiService = new UnicodeBidiService();
     } else {
@@ -40,5 +40,6 @@ const EditorBidiService = {
 
     return bidiMap;
   }
+
 };
 module.exports = EditorBidiService;

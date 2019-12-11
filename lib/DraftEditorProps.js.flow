@@ -45,6 +45,7 @@ export type DraftEditorProps = {
   // styling and formatting when re-applying styles.
   editorKey?: string,
   placeholder?: string,
+  placeholderClassName?: string,
   // Specify whether text alignment should be forced in a direction
   // regardless of input characters.
   textAlignment?: DraftTextAlignment,
@@ -80,6 +81,10 @@ export type DraftEditorProps = {
   // use case should not have any block or inline styles, it is recommended
   // that you set this to `true`.
   stripPastedStyles: boolean,
+  formatPastedText?: (text: string, html: ?string) => {
+    text: string,
+    html: ?string,
+  },
   tabIndex?: number,
   // exposed especially to help improve mobile web behaviors
   autoCapitalize?: string,
@@ -88,12 +93,27 @@ export type DraftEditorProps = {
   ariaActiveDescendantID?: string,
   ariaAutoComplete?: string,
   ariaControls?: string,
+
+  /**
+   * aria-describedby attribute. should point to the id of a descriptive
+   * element. The substring, "{{editor_id_placeholder}}" will be replaced with
+   * the DOM id of the placeholder element if it exists.
+   * @default "{{editor_id_placeholder}}"
+   */
   ariaDescribedBy?: string,
   ariaExpanded?: boolean,
   ariaLabel?: string,
   ariaLabelledBy?: string,
   ariaMultiline?: boolean,
   ariaOwneeID?: string,
+
+  /**
+   * aria-required attribute. Boolean value that indicates that whether an
+   * element is required to submit (true) or not. While HTML5 does have a
+   * `required` attribute now, some browsers don't support it yet and it only
+   * applies to input elements in either case.
+   */
+  ariaRequired?: string,
   webDriverTestID?: string,
 
   /**
@@ -112,7 +132,7 @@ export type DraftEditorProps = {
   // emoji Unicode character, or replacing ASCII quote characters with smart
   // quotes.
   handleBeforeInput?: (chars: string, editorState: EditorState, eventTimeStamp: number) => DraftHandleValue,
-  handlePastedText?: (text: string, html?: string, editorState: EditorState) => DraftHandleValue,
+  handlePastedText?: (text: string, html?: string, editorState: EditorState, isInternalPaste: boolean) => DraftHandleValue,
   handlePastedFiles?: (files: Array<Blob>) => DraftHandleValue,
   // Handle dropped files
   handleDroppedFiles?: (selection: SelectionState, files: Array<Blob>) => DraftHandleValue,
@@ -149,9 +169,11 @@ export type DraftEditorProps = {
   onPaste?: (DraftEditor, SyntheticClipboardEvent<>) => void | Promise<void>,
   onCut?: (DraftEditor, SyntheticClipboardEvent<>) => void,
   onCopy?: (DraftEditor, SyntheticClipboardEvent<>) => void,
+  contentClassName?: string,
   ...
 };
 export type DraftEditorDefaultProps = {
+  ariaDescribedBy: string,
   blockRenderMap: DraftBlockRenderMap,
   blockRendererFn: (block: BlockNodeRecord) => ?Object,
   blockStyleFn: (block: BlockNodeRecord) => string,

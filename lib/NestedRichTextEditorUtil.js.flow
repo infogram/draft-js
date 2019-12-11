@@ -134,7 +134,7 @@ const NestedRichTextEditorUtil: RichTextUtils = {
       if (withoutAtomicBlock !== content) {
         return EditorState.push(editorState, withoutAtomicBlock, 'remove-range');
       }
-    } // if we have a next sibbling we should not allow the normal backspace
+    } // if we have a next sibling we should not allow the normal backspace
     // behaviour of moving this text into its parent
     // if (currentBlock.getPrevSiblingKey()) {
     //  return editorState;
@@ -193,7 +193,7 @@ const NestedRichTextEditorUtil: RichTextUtils = {
     const entityMap = contentState.getEntityMap();
     return contentState.getBlockForKey(selection.getAnchorKey()).getCharacterList().slice(selection.getStartOffset(), selection.getEndOffset()).some(v => {
       const entity = v.getEntity();
-      return !!entity && entityMap.__get(entity).getType() === 'LINK';
+      return !!entity && contentState.getEntity(entity).getType() === 'LINK';
     });
   },
   getCurrentBlockType: (editorState: EditorState): DraftBlockType => {
@@ -210,7 +210,7 @@ const NestedRichTextEditorUtil: RichTextUtils = {
     const newEditorState = EditorState.push(editorState, contentState, 'insert-characters');
     return EditorState.forceSelection(newEditorState, contentState.getSelectionAfter());
   },
-  onTab: (event: SyntheticKeyboardEvent<>, editorState: EditorState, maxDepth: number): EditorState => {
+  onTab: (event: SyntheticKeyboardEvent<>, editorState: EditorState): EditorState => {
     const selection = editorState.getSelection();
     const key = selection.getAnchorKey();
 
@@ -226,13 +226,7 @@ const NestedRichTextEditorUtil: RichTextUtils = {
       return editorState;
     }
 
-    event.preventDefault();
-    const depth = block.getDepth();
-
-    if (!event.shiftKey && depth === maxDepth) {
-      return editorState;
-    } // implement nested tree behaviour for onTab
-
+    event.preventDefault(); // implement nested tree behaviour for onTab
 
     let blockMap = editorState.getCurrentContent().getBlockMap();
     const prevSiblingKey = block.getPrevSiblingKey();
@@ -275,7 +269,7 @@ const NestedRichTextEditorUtil: RichTextUtils = {
     content = editorState.getCurrentContent().merge({
       blockMap: blockMap
     });
-    const withAdjustment = adjustBlockDepthForContentState(content, selection, event.shiftKey ? -1 : 1, maxDepth);
+    const withAdjustment = adjustBlockDepthForContentState(content, selection, event.shiftKey ? -1 : 1);
     return EditorState.push(editorState, withAdjustment, 'adjust-depth');
   },
   toggleCode: (editorState: EditorState): EditorState => {

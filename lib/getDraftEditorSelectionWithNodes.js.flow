@@ -25,10 +25,10 @@ const isElement = require("./isElement");
 
 const nullthrows = require("fbjs/lib/nullthrows");
 
-type SelectionPoint = {|
+type SelectionPoint = {
   key: string,
   offset: number,
-|};
+};
 /**
  * Convert the current selection range to an anchor/focus pair of offset keys
  * and values that can be interpreted by components.
@@ -130,8 +130,10 @@ function getPointForNonTextNode(editorRoot: ?HTMLElement, startNode: Node, child
   // wrapper.
 
   if (editorRoot === node) {
+    var _node;
+
     node = node.firstChild;
-    invariant(isElement(node), 'Invalid DraftEditorContents node.');
+    invariant(isElement(node), 'Invalid DraftEditorContents node. Expected element but instead got a node with type of %s.', [(_node = node) === null || _node === void 0 ? void 0 : _node.nodeType]);
     const castedNode: Element = (node: any); // assignment only added for flow :/
     // otherwise it throws in line 200 saying that node can be null or undefined
 
