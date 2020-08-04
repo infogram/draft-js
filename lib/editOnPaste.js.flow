@@ -28,8 +28,6 @@ const DraftPasteProcessor = require("./DraftPasteProcessor");
 
 const EditorState = require("./EditorState");
 
-const RichTextEditorUtil = require("./RichTextEditorUtil");
-
 const getEntityKeyForSelection = require("./getEntityKeyForSelection");
 
 const getTextContentFromFiles = require("./getTextContentFromFiles");
@@ -48,7 +46,6 @@ function editOnPaste(editor: DraftEditor, e: SyntheticClipboardEvent<>): void {
 
   if (!data.isRichText()) {
     const files: Array<Blob> = (data.getFiles(): any);
-    const defaultFileText = data.getText();
 
     if (files.length > 0) {
       // Allow customized paste handling for images, etc. Otherwise, fall
@@ -56,10 +53,11 @@ function editOnPaste(editor: DraftEditor, e: SyntheticClipboardEvent<>): void {
       if (editor.props.handlePastedFiles && isEventHandled(editor.props.handlePastedFiles(files))) {
         return;
       }
+
+      const defaultFileText = data.getText();
       /* $FlowFixMe[incompatible-call] This comment suppresses an error found
        * DataTransfer was typed. getFiles() returns an array of <Files extends
        * Blob>, not Blob */
-
 
       getTextContentFromFiles(files,
       /*string*/
@@ -72,12 +70,14 @@ function editOnPaste(editor: DraftEditor, e: SyntheticClipboardEvent<>): void {
 
         const editorState = editor._latestEditorState;
         const blocks = splitTextIntoTextBlocks(fileText);
+        const currentContent = editorState.getCurrentContent();
+        const selection = editorState.getSelection();
+        const currentBlock = currentContent.getBlockForKey(selection.getStartKey());
         const character = CharacterMetadata.create({
           style: editorState.getCurrentInlineStyle(),
-          entity: getEntityKeyForSelection(editorState.getCurrentContent(), editorState.getSelection())
+          entity: getEntityKeyForSelection(currentContent, selection)
         });
-        const currentBlockType = RichTextEditorUtil.getCurrentBlockType(editorState);
-        const text = DraftPasteProcessor.processText(blocks, character, currentBlockType);
+        const text = DraftPasteProcessor.processText(blocks, character, currentBlock.getType(), currentBlock.getData());
         const fragment = BlockMapBuilder.createFromArray(text);
         const withInsertedText = DraftModifier.replaceWithFragment(editorState.getCurrentContent(), editorState.getSelection(), fragment);
         editor.update(EditorState.push(editorState, withInsertedText, 'insert-fragment'));
@@ -167,12 +167,14 @@ function editOnPaste(editor: DraftEditor, e: SyntheticClipboardEvent<>): void {
   }
 
   if (textBlocks.length) {
+    const currentContent = editorState.getCurrentContent();
+    const selection = editorState.getSelection();
+    const currentBlock = currentContent.getBlockForKey(selection.getStartKey());
     const character = CharacterMetadata.create({
       style: editorState.getCurrentInlineStyle(),
-      entity: getEntityKeyForSelection(editorState.getCurrentContent(), editorState.getSelection())
+      entity: getEntityKeyForSelection(currentContent, selection)
     });
-    const currentBlockType = RichTextEditorUtil.getCurrentBlockType(editorState);
-    const textFragment = DraftPasteProcessor.processText(textBlocks, character, currentBlockType);
+    const textFragment = DraftPasteProcessor.processText(textBlocks, character, currentBlock.getType(), currentBlock.getData());
     const textMap = BlockMapBuilder.createFromArray(textFragment);
     editor.update(insertFragment(editor._latestEditorState, textMap));
   }
