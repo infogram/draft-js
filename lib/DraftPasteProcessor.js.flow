@@ -47,7 +47,7 @@ const DraftPasteProcessor = {
     return convertFromHTMLToContentBlocks(html, getSafeBodyFromHTML, blockRenderMap);
   },
 
-  processText(textBlocks: Array<string>, character: CharacterMetadata, type: DraftBlockType): Array<BlockNodeRecord> {
+  processText(textBlocks: Array<string>, character: CharacterMetadata, type: DraftBlockType, data: Immutable.Map<any, any>): Array<BlockNodeRecord> {
     return textBlocks.reduce((acc, textLine, index) => {
       textLine = sanitizeDraftText(textLine);
       const key = generateRandomKey();
@@ -55,7 +55,8 @@ const DraftPasteProcessor = {
         key,
         type,
         text: textLine,
-        characterList: List(Repeat(character, textLine.length))
+        characterList: List(Repeat(character, textLine.length)),
+        data
       }; // next block updates previous block
 
       if (experimentalTreeDataSupport && index !== 0) {
