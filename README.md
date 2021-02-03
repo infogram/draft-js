@@ -1,3 +1,15 @@
+# This is infogram's fork of Facebook draft-js
+
+(see original content below)
+
+Differences between this fork and the [original](https://github.com/facebook/draft-js):
+
+- Upgraded [Immutable JS](https://immutable-js.github.io/immutable-js/) dependency to 3.8.2 (so that multiple versions of the same package are not included in the final product)
+- Merged [PR](https://github.com/facebook/draft-js/pull/2551) regarding text pasting
+
+-------------------
+
+
 <p align="center">
   <a href="http://draftjs.org/">
     <img src="https://draftjs.org/img/draftjs-logo.svg" alt="draftjs-logo" width="8%" />
